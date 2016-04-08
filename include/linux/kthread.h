@@ -6,18 +6,21 @@
 
 __printf(4, 5)
 struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
-					   void *data,
-					   int node,
-					   const char namefmt[], ...);
+        void *data,
+        int node,
+        const char namefmt[], ...);
 
+/*
+ * 创建内核线程的函数宏定义
+ */
 #define kthread_create(threadfn, data, namefmt, arg...) \
 	kthread_create_on_node(threadfn, data, -1, namefmt, ##arg)
 
 
 struct task_struct *kthread_create_on_cpu(int (*threadfn)(void *data),
-					  void *data,
-					  unsigned int cpu,
-					  const char *namefmt);
+        void *data,
+        unsigned int cpu,
+        const char *namefmt);
 
 /**
  * kthread_run - create and wake a thread.
@@ -106,7 +109,7 @@ struct kthread_work {
 #endif
 
 extern void __init_kthread_worker(struct kthread_worker *worker,
-			const char *name, struct lock_class_key *key);
+                                  const char *name, struct lock_class_key *key);
 
 #define init_kthread_worker(worker)					\
 	do {								\
@@ -124,7 +127,7 @@ extern void __init_kthread_worker(struct kthread_worker *worker,
 int kthread_worker_fn(void *worker_ptr);
 
 bool queue_kthread_work(struct kthread_worker *worker,
-			struct kthread_work *work);
+                        struct kthread_work *work);
 void flush_kthread_work(struct kthread_work *work);
 void flush_kthread_worker(struct kthread_worker *worker);
 

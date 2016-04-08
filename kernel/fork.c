@@ -302,6 +302,10 @@ void set_task_stack_end_magic(struct task_struct *tsk)
 	*stackend = STACK_END_MAGIC;	/* for overflow detection */
 }
 
+/*
+ * 创建一个新的 struct task_struct 结构体对象，并将 orig 指向的 task_struct 对象中的
+ * 内容赋值给新创建的 task_struct 对象
+ */
 static struct task_struct *dup_task_struct(struct task_struct *orig)
 {
 	struct task_struct *tsk;
@@ -309,18 +313,26 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 	int node = tsk_fork_get_node(orig);
 	int err;
 
+	/* 使用 slab 内存分配器来创建一个新的 task_struct 对象 */
 	tsk = alloc_task_struct_node(node);
 	if (!tsk)
 		return NULL;
 
+	/* 创建一个 thread_info 的对象 */
 	ti = alloc_thread_info_node(tsk, node);
 	if (!ti)
 		goto free_tsk;
 
+	/* 拷贝 orig 内核栈中的内容到 tsk 的内核栈中 */
 	err = arch_dup_task_struct(tsk, orig);
 	if (err)
 		goto free_ti;
 
+	/*
+	 * 将新创建的 task_struct 对象中的 stack 指针指向
+	 * 新创建进程的内核栈的“栈底”最低地址处
+	 * 建立 tsk 中 stack 指针和 thread_info 对象的关联
+	 */
 	tsk->stack = ti;
 #ifdef CONFIG_SECCOMP
 	/*
@@ -331,7 +343,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 	 */
 	tsk->seccomp.filter = NULL;
 #endif
-
+	/* 建立 thread_info 中task 指针和 tsk 对象的关联 */
 	setup_thread_stack(tsk, orig);
 	clear_user_return_notifier(tsk);
 	clear_tsk_need_resched(tsk);
@@ -1181,6 +1193,7 @@ init_task_pid(struct task_struct *task, enum pid_type type, struct pid *pid)
  */
 /* __user 定义在 include/linux/compiler.h 文件中
 * 它表示意思是该对象的属性是用户空间
+* 这个函数的主要功能就是将父进程中的有关内容拷贝到子进程的进程描述符中
 */
 static struct task_struct *copy_process(unsigned long clone_flags,
                                         unsigned long stack_start,
@@ -1240,6 +1253,10 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 		goto fork_out;
 
 	retval = -ENOMEM;
+	/* current 是一个宏，指向当前正在执行的进程的 task_struct
+	 * dup_task_struct 函数复制当前进程的 task_struct 对象到一个新的 task_struct 对象中
+	 * 并返回指向新创建的 task_struct 对象
+	 */
 	p = dup_task_struct(current);
 	if (!p)
 		goto fork_out;
@@ -1254,7 +1271,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 #endif
 	retval = -EAGAIN;
 	if (atomic_read(&p->real_cred->user->processes) >=
-	        task_rlimit(p, RLIMIT_NPROC)) {
+	        task_rlimit(p, RLIMIT_NPROC)) { /* 检查进程资源使用是否超过限制 */
 		if (p->real_cred->user != INIT_USER &&
 		        !capable(CAP_SYS_RESOURCE) && !capable(CAP_SYS_ADMIN))
 			goto bad_fork_free;
@@ -1279,7 +1296,7 @@ static struct task_struct *copy_process(unsigned long clone_flags,
 
 	delayacct_tsk_init(p);	/* Must remain after dup_task_struct() */
 	p->flags &= ~(PF_SUPERPRIV | PF_WQ_WORKER);
-	p->flags |= PF_FORKNOEXEC;
+	p->flags |= PF_FORKNOEXEC; /* 设置 task_struct 的 flag 标志位中 PF_FORKNOEXEC 为 1，表示进程还没有调用 EXEC 系统调用 */
 	INIT_LIST_HEAD(&p->children);
 	INIT_LIST_HEAD(&p->sibling);
 	rcu_copy_process(p);

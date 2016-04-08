@@ -24,6 +24,9 @@ static DEFINE_SPINLOCK(kthread_create_lock);
 static LIST_HEAD(kthread_create_list);
 struct task_struct *kthreadd_task;
 
+/*
+ * 创建内核线程时所需的结构体
+ */
 struct kthread_create_info
 {
 	/* Information passed to kthread() from kthreadd. */
@@ -265,26 +268,30 @@ static void create_kthread(struct kthread_create_info *create)
  * Returns a task_struct or ERR_PTR(-ENOMEM) or ERR_PTR(-EINTR).
  */
 struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
-					   void *data, int node,
-					   const char namefmt[],
-					   ...)
+        void *data, int node,
+        const char namefmt[],
+        ...)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
 	struct task_struct *task;
 	struct kthread_create_info *create = kmalloc(sizeof(*create),
-						     GFP_KERNEL);
+	                                     GFP_KERNEL);
 
 	if (!create)
 		return ERR_PTR(-ENOMEM);
-	create->threadfn = threadfn;
+	create->threadfn = threadfn; /* 新创建线程运行的函数 */
 	create->data = data;
 	create->node = node;
 	create->done = &done;
 
 	spin_lock(&kthread_create_lock);
+	/* 将新创建内核线程的 create->list 加入到待创建链表中  */
 	list_add_tail(&create->list, &kthread_create_list);
 	spin_unlock(&kthread_create_lock);
 
+	/*
+	 * 唤醒 kthreadd 线程来创建新的内核线程
+	 */
 	wake_up_process(kthreadd_task);
 	/*
 	 * Wait for completion in killable state, for I might be chosen by
@@ -302,6 +309,9 @@ struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
 		/*
 		 * kthreadd (or new kernel thread) will call complete()
 		 * shortly.
+		 */
+		/*
+		 * 等待新的线程创建完毕(睡眠在等待队列中)
 		 */
 		wait_for_completion(&done);
 	}
@@ -364,13 +374,13 @@ EXPORT_SYMBOL(kthread_bind);
  * The thread will be woken and put into park mode.
  */
 struct task_struct *kthread_create_on_cpu(int (*threadfn)(void *data),
-					  void *data, unsigned int cpu,
-					  const char *namefmt)
+        void *data, unsigned int cpu,
+        const char *namefmt)
 {
 	struct task_struct *p;
 
 	p = kthread_create_on_node(threadfn, data, cpu_to_node(cpu), namefmt,
-				   cpu);
+	                           cpu);
 	if (IS_ERR(p))
 		return p;
 	set_bit(KTHREAD_IS_PER_CPU, &to_kthread(p)->flags);
@@ -499,15 +509,19 @@ int kthreadd(void *unused)
 		__set_current_state(TASK_RUNNING);
 
 		spin_lock(&kthread_create_lock);
+		/*
+		 * 从待创建内核线程链表中取出数据进行处理
+		 */
 		while (!list_empty(&kthread_create_list)) {
 			struct kthread_create_info *create;
 
+			/* 从待创建内核线程链表中取出数据进行处理 */
 			create = list_entry(kthread_create_list.next,
-					    struct kthread_create_info, list);
-			list_del_init(&create->list);
+			                    struct kthread_create_info, list);
+			list_del_init(&create->list); /* 取出后从列表删除 */
 			spin_unlock(&kthread_create_lock);
 
-			create_kthread(create);
+			create_kthread(create); /* 调用 create_kthread() 函数进行创建内核线程 */
 
 			spin_lock(&kthread_create_lock);
 		}
@@ -518,8 +532,8 @@ int kthreadd(void *unused)
 }
 
 void __init_kthread_worker(struct kthread_worker *worker,
-				const char *name,
-				struct lock_class_key *key)
+                           const char *name,
+                           struct lock_class_key *key)
 {
 	spin_lock_init(&worker->lock);
 	lockdep_set_class_and_name(&worker->lock, key, name);
@@ -565,7 +579,7 @@ repeat:
 	spin_lock_irq(&worker->lock);
 	if (!list_empty(&worker->work_list)) {
 		work = list_first_entry(&worker->work_list,
-					struct kthread_work, node);
+		                        struct kthread_work, node);
 		list_del_init(&work->node);
 	}
 	worker->current_work = work;
@@ -584,8 +598,8 @@ EXPORT_SYMBOL_GPL(kthread_worker_fn);
 
 /* insert @work before @pos in @worker */
 static void insert_kthread_work(struct kthread_worker *worker,
-			       struct kthread_work *work,
-			       struct list_head *pos)
+                                struct kthread_work *work,
+                                struct list_head *pos)
 {
 	lockdep_assert_held(&worker->lock);
 
@@ -605,7 +619,7 @@ static void insert_kthread_work(struct kthread_worker *worker,
  * if @work was successfully queued, %false if it was already pending.
  */
 bool queue_kthread_work(struct kthread_worker *worker,
-			struct kthread_work *work)
+                        struct kthread_work *work)
 {
 	bool ret = false;
 	unsigned long flags;
@@ -628,7 +642,7 @@ struct kthread_flush_work {
 static void kthread_flush_work_fn(struct kthread_work *work)
 {
 	struct kthread_flush_work *fwork =
-		container_of(work, struct kthread_flush_work, work);
+	    container_of(work, struct kthread_flush_work, work);
 	complete(&fwork->done);
 }
 

@@ -200,6 +200,7 @@ print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq);
  * modifying one set can't modify the other one by
  * mistake.
  */
+/* 有关进程的相关说明 */
 #define TASK_RUNNING		0
 #define TASK_INTERRUPTIBLE	1
 #define TASK_UNINTERRUPTIBLE	2
@@ -218,8 +219,8 @@ print_cfs_rq(struct seq_file *m, int cpu, struct cfs_rq *cfs_rq);
 
 #define TASK_STATE_TO_CHAR_STR "RSDTtXZxKWP"
 
-extern char ___assert_task_state[1 - 2*!!(
-		sizeof(TASK_STATE_TO_CHAR_STR)-1 != ilog2(TASK_STATE_MAX)+1)];
+extern char ___assert_task_state[1 - 2 * !!(
+                                     sizeof(TASK_STATE_TO_CHAR_STR) - 1 != ilog2(TASK_STATE_MAX) + 1)];
 
 /* Convenience macros for the sake of set_task_state */
 #define TASK_KILLABLE		(TASK_WAKEKILL | TASK_UNINTERRUPTIBLE)
@@ -339,8 +340,8 @@ extern void touch_softlockup_watchdog(void);
 extern void touch_softlockup_watchdog_sync(void);
 extern void touch_all_softlockup_watchdogs(void);
 extern int proc_dowatchdog_thresh(struct ctl_table *table, int write,
-				  void __user *buffer,
-				  size_t *lenp, loff_t *ppos);
+                                  void __user *buffer,
+                                  size_t *lenp, loff_t *ppos);
 extern unsigned int  softlockup_panic;
 void lockup_detector_init(void);
 #else
@@ -390,11 +391,11 @@ struct user_namespace;
 extern void arch_pick_mmap_layout(struct mm_struct *mm);
 extern unsigned long
 arch_get_unmapped_area(struct file *, unsigned long, unsigned long,
-		       unsigned long, unsigned long);
+                       unsigned long, unsigned long);
 extern unsigned long
 arch_get_unmapped_area_topdown(struct file *filp, unsigned long addr,
-			  unsigned long len, unsigned long pgoff,
-			  unsigned long flags);
+                               unsigned long len, unsigned long pgoff,
+                               unsigned long flags);
 #else
 static inline void arch_pick_mmap_layout(struct mm_struct *mm) {}
 #endif
@@ -448,7 +449,7 @@ static inline int get_dumpable(struct mm_struct *mm)
 #else
 # define MMF_DUMP_MASK_DEFAULT_ELF	0
 #endif
-					/* leave room for more dump flags */
+/* leave room for more dump flags */
 #define MMF_VM_MERGEABLE	16	/* KSM may merge identical pages */
 #define MMF_VM_HUGEPAGE		17	/* set when VM_HUGEPAGE is set on vma */
 #define MMF_EXE_FILE_CHANGED	18	/* see prctl_set_mm_exe_file() */
@@ -601,8 +602,8 @@ struct signal_struct {
 	 * process will inherit a flag if they should look for a
 	 * child_subreaper process at exit.
 	 */
-	unsigned int		is_child_subreaper:1;
-	unsigned int		has_child_subreaper:1;
+	unsigned int		is_child_subreaper: 1;
+	unsigned int		has_child_subreaper: 1;
 
 	/* POSIX.1b Interval Timers */
 	int			posix_timer_id;
@@ -733,7 +734,7 @@ struct signal_struct {
 static inline int signal_group_exit(const struct signal_struct *sig)
 {
 	return	(sig->flags & SIGNAL_GROUP_EXIT) ||
-		(sig->group_exit_task != NULL);
+	        (sig->group_exit_task != NULL);
 }
 
 /*
@@ -792,7 +793,7 @@ struct sched_info {
 
 	/* timestamps */
 	unsigned long long last_arrival,/* when we last ran on a cpu */
-			   last_queued;	/* when we were last queued to run */
+	         last_queued;	/* when we were last queued to run */
 };
 #endif /* defined(CONFIG_SCHEDSTATS) || defined(CONFIG_TASK_DELAY_ACCT) */
 
@@ -820,9 +821,9 @@ struct task_delay_info {
 	u64 blkio_delay;	/* wait for sync block io completion */
 	u64 swapin_delay;	/* wait for swapin block io completion */
 	u32 blkio_count;	/* total count of the number of sync block */
-				/* io operations performed */
+	/* io operations performed */
 	u32 swapin_count;	/* total count of the number of swapin block */
-				/* io operations performed */
+	/* io operations performed */
 
 	u64 freepages_start;
 	u64 freepages_delay;	/* wait for memory reclaim */
@@ -993,7 +994,7 @@ static inline struct cpumask *sched_domain_span(struct sched_domain *sd)
 }
 
 extern void partition_sched_domains(int ndoms_new, cpumask_var_t doms_new[],
-				    struct sched_domain_attr *dattr_new);
+                                    struct sched_domain_attr *dattr_new);
 
 /* Allocate an array of sched domains, for partition_sched_domains(). */
 cpumask_var_t *alloc_sched_domains(unsigned int ndoms);
@@ -1040,7 +1041,7 @@ struct sched_domain_attr;
 
 static inline void
 partition_sched_domains(int ndoms_new, cpumask_var_t doms_new[],
-			struct sched_domain_attr *dattr_new)
+                        struct sched_domain_attr *dattr_new)
 {
 }
 
@@ -1232,9 +1233,15 @@ enum perf_event_task_context {
 	perf_nr_task_contexts,
 };
 
+/*
+* 这是内核中非常重要的数据结构，它描述了 Linux 中进程的信息
+* 很多时候，我们都需要回到这个数据结构中来好好看看
+ */
+
 struct task_struct {
 	volatile long state;	/* -1 unrunnable, 0 runnable, >0 stopped */
-	void *stack;
+	/* 内核栈结构通过 union thread_union 联合体来定义 */
+	void *stack; /* 指向进程对应的内核栈结构体的“栈底”，也就是栈的最低地址（如果栈是向下生长的话） */
 	atomic_t usage;
 	unsigned int flags;	/* per process flags, defined below */
 	unsigned int ptrace;
@@ -1298,9 +1305,10 @@ struct task_struct {
 	struct rb_node pushable_dl_tasks;
 #endif
 
+	/* mm 指向当前进程的地址空间 */
 	struct mm_struct *mm, *active_mm;
 #ifdef CONFIG_COMPAT_BRK
-	unsigned brk_randomized:1;
+	unsigned brk_randomized: 1;
 #endif
 	/* per-thread vma caching */
 	u32 vmacache_seqnum;
@@ -1308,26 +1316,26 @@ struct task_struct {
 #if defined(SPLIT_RSS_COUNTING)
 	struct task_rss_stat	rss_stat;
 #endif
-/* task state */
-	int exit_state;
-	int exit_code, exit_signal;
+	/* task state */
+	int exit_state;  /* 进程退出时的状态 */
+	int exit_code, exit_signal; /* 进程调用 exit() 系统调用时，传入的退出码，以及触发退出的信号 */
 	int pdeath_signal;  /*  The signal sent when the parent dies  */
 	unsigned int jobctl;	/* JOBCTL_*, siglock protected */
 
 	/* Used for emulating ABI behavior of previous Linux versions */
 	unsigned int personality;
 
-	unsigned in_execve:1;	/* Tell the LSMs that the process is doing an
+	unsigned in_execve: 1;	/* Tell the LSMs that the process is doing an
 				 * execve */
-	unsigned in_iowait:1;
+	unsigned in_iowait: 1;
 
 	/* Revert to default priority/policy when forking */
-	unsigned sched_reset_on_fork:1;
-	unsigned sched_contributes_to_load:1;
+	unsigned sched_reset_on_fork: 1;
+	unsigned sched_contributes_to_load: 1;
 
 	unsigned long atomic_flags; /* Flags needing atomic access. */
 
-	pid_t pid;
+	pid_t pid;  /* 每个进程都有的唯一的编号 */
 	pid_t tgid;
 
 #ifdef CONFIG_CC_STACKPROTECTOR
@@ -1338,6 +1346,11 @@ struct task_struct {
 	 * pointers to (original) parent process, youngest child, younger sibling,
 	 * older sibling, respectively.  (p->father can be replaced with
 	 * p->real_parent->pid)
+	 */
+	/*
+	 * real_parent是亲爹，调fork的那个，parent呢是干爹，大部分情况下亲爹干爹是一个人
+	 * ps看到的是干爹，什么时候亲爹干爹不一样的，比如有一种情况，比如亲爹死了
+	 * 但是呢又得有一个父进程，比如1号进程就会被当成父进程。但进程不是1号fork出来的
 	 */
 	struct task_struct __rcu *real_parent; /* real parent process */
 	struct task_struct __rcu *parent; /* recipient of SIGCHLD, wait4() reports */
@@ -1382,13 +1395,13 @@ struct task_struct {
 	unsigned long nvcsw, nivcsw; /* context switch counts */
 	u64 start_time;		/* monotonic time in nsec */
 	u64 real_start_time;	/* boot based time in nsec */
-/* mm fault and swap info: this can arguably be seen as either mm-specific or thread-specific */
+	/* mm fault and swap info: this can arguably be seen as either mm-specific or thread-specific */
 	unsigned long min_flt, maj_flt;
 
 	struct task_cputime cputime_expires;
 	struct list_head cpu_timers[3];
 
-/* process credentials */
+	/* process credentials */
 	const struct cred __rcu *real_cred; /* objective and real subjective task
 					 * credentials (COW) */
 	const struct cred __rcu *cred;	/* effective (overridable) subjective task
@@ -1397,26 +1410,30 @@ struct task_struct {
 				     - access with [gs]et_task_comm (which lock
 				       it with task_lock())
 				     - initialized normally by setup_new_exec */
-/* file system info */
+	/* file system info */
 	int link_count, total_link_count;
 #ifdef CONFIG_SYSVIPC
-/* ipc stuff */
+	/* ipc stuff */
 	struct sysv_sem sysvsem;
 	struct sysv_shm sysvshm;
 #endif
 #ifdef CONFIG_DETECT_HUNG_TASK
-/* hung task detection */
+	/* hung task detection */
 	unsigned long last_switch_count;
 #endif
-/* CPU-specific state of this task */
+	/* 当前进程特定于CPU的状态信息 */
+	/* CPU-specific state of this task */
 	struct thread_struct thread;
-/* filesystem information */
+	/* filesystem information */
+	/* 文件系统相关的信息 */
 	struct fs_struct *fs;
-/* open file information */
+	/* 进程打开文件的信息 */
+	/* open file information */
 	struct files_struct *files;
-/* namespaces */
+	/* namespaces */
 	struct nsproxy *nsproxy;
-/* signal handlers */
+	/* signal handlers */
+	/* 信号处理相关的程序 */
 	struct signal_struct *signal;
 	struct sighand_struct *sighand;
 
@@ -1438,11 +1455,12 @@ struct task_struct {
 #endif
 	struct seccomp seccomp;
 
-/* Thread group tracking */
-   	u32 parent_exec_id;
-   	u32 self_exec_id;
-/* Protection of (de-)allocation: mm, files, fs, tty, keyrings, mems_allowed,
- * mempolicy */
+	/* Thread group tracking */
+	u32 parent_exec_id;
+	u32 self_exec_id;
+	/* Protection of (de-)allocation: mm, files, fs, tty, keyrings, mems_allowed,
+	 * mempolicy */
+	/* 保护mm，files等信息的自旋锁 */
 	spinlock_t alloc_lock;
 
 	/* Protection of the PI data structures: */
@@ -1484,18 +1502,19 @@ struct task_struct {
 	gfp_t lockdep_reclaim_gfp;
 #endif
 
-/* journalling filesystem info */
+	/* journalling filesystem info */
+	/* 日志文件系统信息 */
 	void *journal_info;
 
-/* stacked block device info */
+	/* stacked block device info */
 	struct bio_list *bio_list;
 
 #ifdef CONFIG_BLOCK
-/* stack plugging */
+	/* stack plugging */
 	struct blk_plug *plug;
 #endif
 
-/* VM state */
+	/* VM state */
 	struct reclaim_state *reclaim_state;
 
 	struct backing_dev_info *backing_dev_info;
@@ -1651,7 +1670,7 @@ struct task_struct {
 		struct mem_cgroup *memcg;
 		gfp_t gfp_mask;
 		int order;
-		unsigned int may_oom:1;
+		unsigned int may_oom: 1;
 	} memcg_oom;
 #endif
 #ifdef CONFIG_UPROBES
@@ -1661,7 +1680,7 @@ struct task_struct {
 	unsigned int	sequential_io;
 	unsigned int	sequential_io_avg;
 #endif
-};
+};  /* struct task_struct 定义结束 */
 
 /* Future-safe accessor for struct task_struct's cpus_allowed. */
 #define tsk_cpus_allowed(tsk) (&(tsk)->cpus_allowed)
@@ -1677,10 +1696,10 @@ extern pid_t task_numa_group_id(struct task_struct *p);
 extern void set_numabalancing_state(bool enabled);
 extern void task_numa_free(struct task_struct *p);
 extern bool should_numa_migrate_memory(struct task_struct *p, struct page *page,
-					int src_nid, int dst_cpu);
+                                       int src_nid, int dst_cpu);
 #else
 static inline void task_numa_fault(int last_node, int node, int pages,
-				   int flags)
+                                   int flags)
 {
 }
 static inline pid_t task_numa_group_id(struct task_struct *p)
@@ -1694,7 +1713,7 @@ static inline void task_numa_free(struct task_struct *p)
 {
 }
 static inline bool should_numa_migrate_memory(struct task_struct *p,
-				struct page *page, int src_nid, int dst_cpu)
+        struct page *page, int src_nid, int dst_cpu)
 {
 	return true;
 }
@@ -1741,7 +1760,7 @@ struct pid_namespace;
  * see also pid_nr() etc in include/linux/pid.h
  */
 pid_t __task_pid_nr_ns(struct task_struct *task, enum pid_type type,
-			struct pid_namespace *ns);
+                       struct pid_namespace *ns);
 
 static inline pid_t task_pid_nr(struct task_struct *tsk)
 {
@@ -1749,7 +1768,7 @@ static inline pid_t task_pid_nr(struct task_struct *tsk)
 }
 
 static inline pid_t task_pid_nr_ns(struct task_struct *tsk,
-					struct pid_namespace *ns)
+                                   struct pid_namespace *ns)
 {
 	return __task_pid_nr_ns(tsk, PIDTYPE_PID, ns);
 }
@@ -1792,7 +1811,7 @@ static inline pid_t task_ppid_nr(const struct task_struct *tsk)
 }
 
 static inline pid_t task_pgrp_nr_ns(struct task_struct *tsk,
-					struct pid_namespace *ns)
+                                    struct pid_namespace *ns)
 {
 	return __task_pid_nr_ns(tsk, PIDTYPE_PGID, ns);
 }
@@ -1804,7 +1823,7 @@ static inline pid_t task_pgrp_vnr(struct task_struct *tsk)
 
 
 static inline pid_t task_session_nr_ns(struct task_struct *tsk,
-					struct pid_namespace *ns)
+                                       struct pid_namespace *ns)
 {
 	return __task_pid_nr_ns(tsk, PIDTYPE_SID, ns);
 }
@@ -1830,6 +1849,7 @@ static inline pid_t task_pgrp_nr(struct task_struct *tsk)
  *
  * Return: 1 if the process is alive. 0 otherwise.
  */
+/* 判断指定进程 p 的是否还是可用的*/
 static inline int pid_alive(const struct task_struct *p)
 {
 	return p->pids[PIDTYPE_PID].pid != NULL;
@@ -1863,13 +1883,13 @@ static inline void put_task_struct(struct task_struct *t)
 
 #ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
 extern void task_cputime(struct task_struct *t,
-			 cputime_t *utime, cputime_t *stime);
+                         cputime_t *utime, cputime_t *stime);
 extern void task_cputime_scaled(struct task_struct *t,
-				cputime_t *utimescaled, cputime_t *stimescaled);
+                                cputime_t *utimescaled, cputime_t *stimescaled);
 extern cputime_t task_gtime(struct task_struct *t);
 #else
 static inline void task_cputime(struct task_struct *t,
-				cputime_t *utime, cputime_t *stime)
+                                cputime_t *utime, cputime_t *stime)
 {
 	if (utime)
 		*utime = t->utime;
@@ -1878,8 +1898,8 @@ static inline void task_cputime(struct task_struct *t,
 }
 
 static inline void task_cputime_scaled(struct task_struct *t,
-				       cputime_t *utimescaled,
-				       cputime_t *stimescaled)
+                                       cputime_t *utimescaled,
+                                       cputime_t *stimescaled)
 {
 	if (utimescaled)
 		*utimescaled = t->utimescaled;
@@ -2025,10 +2045,10 @@ TASK_PFA_CLEAR(SPREAD_SLAB, spread_slab)
 #define JOBCTL_PENDING_MASK	(JOBCTL_STOP_PENDING | JOBCTL_TRAP_MASK)
 
 extern bool task_set_jobctl_pending(struct task_struct *task,
-				    unsigned int mask);
+                                    unsigned int mask);
 extern void task_clear_jobctl_trapping(struct task_struct *task);
 extern void task_clear_jobctl_pending(struct task_struct *task,
-				      unsigned int mask);
+                                      unsigned int mask);
 
 static inline void rcu_copy_process(struct task_struct *p)
 {
@@ -2046,7 +2066,7 @@ static inline void rcu_copy_process(struct task_struct *p)
 }
 
 static inline void tsk_restore_flags(struct task_struct *task,
-				unsigned long orig_flags, unsigned long flags)
+                                     unsigned long orig_flags, unsigned long flags)
 {
 	task->flags &= ~flags;
 	task->flags |= orig_flags & flags;
@@ -2054,17 +2074,17 @@ static inline void tsk_restore_flags(struct task_struct *task,
 
 #ifdef CONFIG_SMP
 extern void do_set_cpus_allowed(struct task_struct *p,
-			       const struct cpumask *new_mask);
+                                const struct cpumask *new_mask);
 
 extern int set_cpus_allowed_ptr(struct task_struct *p,
-				const struct cpumask *new_mask);
+                                const struct cpumask *new_mask);
 #else
 static inline void do_set_cpus_allowed(struct task_struct *p,
-				      const struct cpumask *new_mask)
+                                       const struct cpumask *new_mask)
 {
 }
 static inline int set_cpus_allowed_ptr(struct task_struct *p,
-				       const struct cpumask *new_mask)
+                                       const struct cpumask *new_mask)
 {
 	if (!cpumask_test_cpu(0, new_mask))
 		return -EINVAL;
@@ -2212,11 +2232,11 @@ extern int can_nice(const struct task_struct *p, const int nice);
 extern int task_curr(const struct task_struct *p);
 extern int idle_cpu(int cpu);
 extern int sched_setscheduler(struct task_struct *, int,
-			      const struct sched_param *);
+                              const struct sched_param *);
 extern int sched_setscheduler_nocheck(struct task_struct *, int,
-				      const struct sched_param *);
+                                      const struct sched_param *);
 extern int sched_setattr(struct task_struct *,
-			 const struct sched_attr *);
+                         const struct sched_attr *);
 extern struct task_struct *idle_task(int cpu);
 /**
  * is_idle_task - is the specified task an idle task?
@@ -2240,7 +2260,7 @@ extern struct exec_domain	default_exec_domain;
 
 union thread_union {
 	struct thread_info thread_info;
-	unsigned long stack[THREAD_SIZE/sizeof(long)];
+	unsigned long stack[THREAD_SIZE / sizeof(long)];
 };
 
 #ifndef __HAVE_ARCH_KSTACK_END
@@ -2249,7 +2269,7 @@ static inline int kstack_end(void *addr)
 	/* Reliable end of stack detection:
 	 * Some APM bios versions misalign the stack
 	 */
-	return !(((unsigned long)addr+sizeof(void*)-1) & (THREAD_SIZE-sizeof(void*)));
+	return !(((unsigned long)addr + sizeof(void*) - 1) & (THREAD_SIZE - sizeof(void*)));
 }
 #endif
 
@@ -2273,7 +2293,7 @@ extern struct pid_namespace init_pid_ns;
 
 extern struct task_struct *find_task_by_vpid(pid_t nr);
 extern struct task_struct *find_task_by_pid_ns(pid_t nr,
-		struct pid_namespace *ns);
+        struct pid_namespace *ns);
 
 /* per-UID process charging. */
 extern struct user_struct * alloc_uid(kuid_t);
@@ -2292,9 +2312,9 @@ extern int wake_up_state(struct task_struct *tsk, unsigned int state);
 extern int wake_up_process(struct task_struct *tsk);
 extern void wake_up_new_task(struct task_struct *tsk);
 #ifdef CONFIG_SMP
- extern void kick_process(struct task_struct *tsk);
+extern void kick_process(struct task_struct *tsk);
 #else
- static inline void kick_process(struct task_struct *tsk) { }
+static inline void kick_process(struct task_struct *tsk) { }
 #endif
 extern int sched_fork(unsigned long clone_flags, struct task_struct *p);
 extern void sched_dead(struct task_struct *p);
@@ -2319,7 +2339,7 @@ static inline int dequeue_signal_lock(struct task_struct *tsk, sigset_t *mask, s
 }
 
 extern void block_all_signals(int (*notifier)(void *priv), void *priv,
-			      sigset_t *mask);
+                              sigset_t *mask);
 extern void unblock_all_signals(void);
 extern void release_task(struct task_struct * p);
 extern int send_sig_info(int, struct siginfo *, struct task_struct *);
@@ -2328,7 +2348,7 @@ extern int force_sig_info(int, struct siginfo *, struct task_struct *);
 extern int __kill_pgrp_info(int sig, struct siginfo *info, struct pid *pgrp);
 extern int kill_pid_info(int sig, struct siginfo *info, struct pid *pid);
 extern int kill_pid_info_as_cred(int, struct siginfo *, struct pid *,
-				const struct cred *, u32);
+                                 const struct cred *, u32);
 extern int kill_pgrp(struct pid *pid, int sig, int priv);
 extern int kill_pid(struct pid *pid, int sig, int priv);
 extern int kill_proc_info(int, struct siginfo *, pid_t);
@@ -2373,10 +2393,10 @@ static inline int on_sig_stack(unsigned long sp)
 {
 #ifdef CONFIG_STACK_GROWSUP
 	return sp >= current->sas_ss_sp &&
-		sp - current->sas_ss_sp < current->sas_ss_size;
+	       sp - current->sas_ss_sp < current->sas_ss_size;
 #else
 	return sp > current->sas_ss_sp &&
-		sp - current->sas_ss_sp <= current->sas_ss_size;
+	       sp - current->sas_ss_sp <= current->sas_ss_size;
 #endif
 }
 
@@ -2426,7 +2446,7 @@ extern struct mm_struct *mm_access(struct task_struct *task, unsigned int mode);
 extern void mm_release(struct task_struct *, struct mm_struct *);
 
 extern int copy_thread(unsigned long, unsigned long, unsigned long,
-			struct task_struct *);
+                       struct task_struct *);
 extern void flush_thread(void);
 extern void exit_thread(void);
 
@@ -2439,8 +2459,8 @@ extern void flush_itimer_signals(void);
 extern void do_group_exit(int);
 
 extern int do_execve(struct filename *,
-		     const char __user * const __user *,
-		     const char __user * const __user *);
+                     const char __user * const __user *,
+                     const char __user * const __user *);
 extern long do_fork(unsigned long, unsigned long, unsigned long, int __user *, int __user *);
 struct task_struct *fork_idle(int);
 extern pid_t kernel_thread(int (*fn)(void *), void *arg, unsigned long flags);
@@ -2458,7 +2478,7 @@ extern unsigned long wait_task_inactive(struct task_struct *, long match_state);
 #else
 static inline void scheduler_ipi(void) { }
 static inline unsigned long wait_task_inactive(struct task_struct *p,
-					       long match_state)
+        long match_state)
 {
 	return 1;
 }
@@ -2522,7 +2542,7 @@ bool same_thread_group(struct task_struct *p1, struct task_struct *p2)
 static inline struct task_struct *next_thread(const struct task_struct *p)
 {
 	return list_entry_rcu(p->thread_group.next,
-			      struct task_struct, thread_group);
+	                      struct task_struct, thread_group);
 }
 
 static inline int thread_group_empty(struct task_struct *p)
@@ -2554,10 +2574,10 @@ static inline void task_unlock(struct task_struct *p)
 }
 
 extern struct sighand_struct *__lock_task_sighand(struct task_struct *tsk,
-							unsigned long *flags);
+        unsigned long *flags);
 
 static inline struct sighand_struct *lock_task_sighand(struct task_struct *tsk,
-						       unsigned long *flags)
+        unsigned long *flags)
 {
 	struct sighand_struct *ret;
 
@@ -2567,7 +2587,7 @@ static inline struct sighand_struct *lock_task_sighand(struct task_struct *tsk,
 }
 
 static inline void unlock_task_sighand(struct task_struct *tsk,
-						unsigned long *flags)
+                                       unsigned long *flags)
 {
 	spin_unlock_irqrestore(&tsk->sighand->siglock, *flags);
 }
@@ -2627,7 +2647,9 @@ static inline void threadgroup_unlock(struct task_struct *tsk) {}
 
 static inline void setup_thread_stack(struct task_struct *p, struct task_struct *org)
 {
+	/* 将 orig 对应的 thread_info 对象中的数据拷贝给 p 对应的 thread_info 对象 */
 	*task_thread_info(p) = *task_thread_info(org);
+	/* p 对应的 thread_info 对象的 task 指针指向 task_struct p */
 	task_thread_info(p)->task = p;
 }
 
@@ -2706,17 +2728,17 @@ static inline int test_tsk_thread_flag(struct task_struct *tsk, int flag)
 
 static inline void set_tsk_need_resched(struct task_struct *tsk)
 {
-	set_tsk_thread_flag(tsk,TIF_NEED_RESCHED);
+	set_tsk_thread_flag(tsk, TIF_NEED_RESCHED);
 }
 
 static inline void clear_tsk_need_resched(struct task_struct *tsk)
 {
-	clear_tsk_thread_flag(tsk,TIF_NEED_RESCHED);
+	clear_tsk_thread_flag(tsk, TIF_NEED_RESCHED);
 }
 
 static inline int test_tsk_need_resched(struct task_struct *tsk)
 {
-	return unlikely(test_tsk_thread_flag(tsk,TIF_NEED_RESCHED));
+	return unlikely(test_tsk_thread_flag(tsk, TIF_NEED_RESCHED));
 }
 
 static inline int restart_syscall(void)
@@ -2727,7 +2749,7 @@ static inline int restart_syscall(void)
 
 static inline int signal_pending(struct task_struct *p)
 {
-	return unlikely(test_tsk_thread_flag(p,TIF_SIGPENDING));
+	return unlikely(test_tsk_thread_flag(p, TIF_SIGPENDING));
 }
 
 static inline int __fatal_signal_pending(struct task_struct *p)
@@ -2957,7 +2979,7 @@ extern struct task_group root_task_group;
 #endif /* CONFIG_CGROUP_SCHED */
 
 extern int task_can_switch_user(struct user_struct *up,
-					struct task_struct *tsk);
+                                struct task_struct *tsk);
 
 #ifdef CONFIG_TASK_XACCT
 static inline void add_rchar(struct task_struct *tsk, ssize_t amt)
@@ -3010,13 +3032,13 @@ static inline void mm_update_next_owner(struct mm_struct *mm)
 #endif /* CONFIG_MEMCG */
 
 static inline unsigned long task_rlimit(const struct task_struct *tsk,
-		unsigned int limit)
+                                        unsigned int limit)
 {
 	return ACCESS_ONCE(tsk->signal->rlim[limit].rlim_cur);
 }
 
 static inline unsigned long task_rlimit_max(const struct task_struct *tsk,
-		unsigned int limit)
+        unsigned int limit)
 {
 	return ACCESS_ONCE(tsk->signal->rlim[limit].rlim_max);
 }
