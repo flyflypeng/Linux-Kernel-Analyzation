@@ -486,22 +486,23 @@ sysexit_audit:
 	PTGS_TO_GS_EX
 ENDPROC(ia32_sysenter_target)
 
-	# system call handler stub
+# system call handler stub
+# 系统调用汇编代码的起点
 ENTRY(system_call)
 	RING0_INT_FRAME			# can't unwind into user space anyway
 	ASM_CLAC
 	pushl_cfi %eax			# save orig_eax
-	SAVE_ALL
+	SAVE_ALL				# 进入中断处理程序前，保存内核态下的现场
 	GET_THREAD_INFO(%ebp)
 					# system call tracing in operation / emulation
 	testl $_TIF_WORK_SYSCALL_ENTRY,TI_flags(%ebp)
 	jnz syscall_trace_entry
-	cmpl $(NR_syscalls), %eax
-	jae syscall_badsys
+	cmpl $(NR_syscalls), %eax # 比较传入的系统调用号是否大于最大的系统调用号
+	jae syscall_badsys	# 如果传入的系统调用号太大，则跳转到处理无效系统调用号的处理程序
 syscall_call:
-	call *sys_call_table(,%eax,4)
+	call *sys_call_table(,%eax,4) # 根据 eax 中传入的系统调用号来调用对应的系统调用服务程序
 syscall_after_call:
-	movl %eax,PT_EAX(%esp)		# store the return value
+	movl %eax,PT_EAX(%esp)		# store the return value, 保存系统调用后返回的值到 eax 中
 syscall_exit:
 	LOCKDEP_SYS_EXIT
 	DISABLE_INTERRUPTS(CLBR_ANY)	# make sure we don't miss an interrupt
@@ -645,7 +646,7 @@ syscall_trace_entry:
 	movl $-ENOSYS,PT_EAX(%esp)
 	movl %esp, %eax
 	call syscall_trace_enter
-	/* What it returned is what we'll actually use.  */
+	/* What it returned is what we'll actually use. */
 	cmpl $(NR_syscalls), %eax
 	jnae syscall_call
 	jmp syscall_exit
@@ -653,7 +654,7 @@ END(syscall_trace_entry)
 
 	# perform syscall exit tracing
 	ALIGN
-syscall_exit_work:
+syscall_exit_work:      # 退出系统调用所需要做的工作
 	testl $_TIF_WORK_SYSCALL_EXIT, %ecx
 	jz work_pending
 	TRACE_IRQS_ON
